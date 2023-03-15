@@ -31,6 +31,74 @@
 
 
 
+# Cách để test api:
+1. Tạo một request mới trong Postman. Chọn phương thức POST hoặc GET và nhập URL của API GraphQL.
+2. Chọn tab Body và chọn kiểu GraphQL. Sau đó sẽ nhập operation và variables :  
+    **Operation** :   
+    ```javascript   
+    //Sign In
+    mutation Mutation($username: String!, $password: String!) {
+        signIn(username: $username, password: $password)
+    }
+    ```
+    ```javascript       
+    //Sign Up
+    mutation SignUp($fullName: String!, $email: String!, $password: String!, $username: String!) {
+    signUp(full_name: $fullName, email: $email, password: $password, username: $username)
+    }
+    ```
+    ```javascript       
+    //Get user by id
+    query User($userId: ID!) {
+    user(id: $userId) {
+        user_id
+        full_name
+        email
+        username
+        password
+    }
+    }
+    ```
+    ```javascript       
+    //Get all users 
+    query Users {
+    users {
+        user_id
+        full_name
+        email
+        username
+        password
+    }
+    }
+    ```
+
+    **Variables** :   
+    ```javascript   
+    //Sign In
+    {  
+    "username": "",
+    "password": "",
+    }
+    ```
+    ```javascript       
+    //Sign Up
+    {  
+    "fullName": "",
+    "email": "",  
+    "password": "",
+    "username": ""
+    }
+    ```
+
+
+
+
+
+
+
+
+
+
 
 
 
