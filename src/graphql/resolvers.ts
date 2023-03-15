@@ -1,7 +1,9 @@
-const { ApolloServer, gql } = require('apollo-server');
+const bcrypt = require('bcrypt')
+const jwt = require('jsonwebtoken')
+const {AuthenticationError,ForbiddenError} = require('apollo-server-express');
+//const pool = require('../modules/database.js'); 
 const { Pool } = require('pg');
-const bcrypt = require('bcrypt');
-const jwt = require('jsonwebtoken');
+
 
 require('dotenv').config();
 
@@ -17,49 +19,6 @@ pool.connect((err) => {
     if (err) throw err;
     console.log('Connected to PostgreSQL server');
 });
-
-const typeDefs = gql`
-  type User {
-    user_id : ID
-    full_name: String
-    email: String
-    username: String
-    password: String
-
-  }
-
-  type Suggestion {
-    id: ID!
-    user_id: ID!
-    course_id: ID!
-  }
-
-  type Tag {
-    id: ID!
-    title: String!
-  }
-
-  type Course {
-    id: ID!
-    user_id: ID!
-    title: String!
-    description: String!
-  }
-
-  type Query {
-    user(id: ID!): User
-    users : [User]
-    course(id: ID!): Course
-  }
-
-  type Mutation {
-    signUp(full_name: String!, email: String!, password: String!, username: String!): String!
-    signIn(username : String!, password : String!) : String!
-    createSuggestion(user_id: ID!, course_id: ID!): Suggestion!
-    createTag(title: String!): Tag!
-    createCourse(user_id: ID!, title: String!, description: String!): Course!
-  }
-`;
 
 const resolvers = {
     Query: {
@@ -80,7 +39,6 @@ const resolvers = {
             const { rows } = await pool.query(query);
             return rows;
         }
-
 
     },
     /* Suggestion: {
@@ -110,11 +68,11 @@ const resolvers = {
          },
      },*/
     Mutation: {
-        signUp : async (_, { full_name, email, password, username }) =>  {
+        signUp: async (_, { full_name, email, password, username }) => {
             email = email.trim().toLowerCase();
             const hashed = await bcrypt.hash(password, 10);
             try {
-                
+
                 const checkUsernameQuery = `SELECT * FROM users WHERE username = $1`;
                 const usernameExists = await pool.query(checkUsernameQuery, [username]);
                 if (usernameExists.rows.length > 0) {
@@ -145,13 +103,13 @@ const resolvers = {
                 const query = `SELECT * FROM users WHERE username = $1`;
                 const { rows } = await pool.query(query, [username]);
                 if (rows.length === 0) {
-                    throw new Error('Invalid username or password');
+                    throw new AuthenticationError('Error signing in');
                 }
                 const user = rows[0];
                 const valid = await bcrypt.compare(password, user.password);
 
                 if (!valid) {
-                    throw new Error('Invalid username or password');
+                    throw new AuthenticationError('Error signing in');
                 }
                 return jwt.sign({ id: user.user_id }, process.env.JWT_SECRET);
             } catch (error) {
@@ -159,9 +117,14 @@ const resolvers = {
                 throw new Error('Could not log in');
             }
         },
-        createSuggestion: async (_, { user_id, course_id }) =>  {
+        createSuggestion: async (_, { user_id, course_id }) => {
+
+            if(!user_id) {
+                throw new AuthenticationError('You must be signed in');
+            }
+
             try {
-                const query = `
+              const query = `
               INSERT INTO suggestions (user_id, course_id)
               VALUES ($1, $2)
               RETURNING *
@@ -175,7 +138,11 @@ const resolvers = {
                 throw new Error('Could not create suggestion');
             }
         },
-        createTag: async (_, { title }) =>  {
+         createTag: async (_, { user_id , title }) => {
+            if (!user_id) {
+                throw new AuthenticationError('You must be signed in');
+            }
+
             try {
                 const query = `
                 INSERT INTO tags (title) 
@@ -191,7 +158,12 @@ const resolvers = {
                 throw new Error('Could not create tag');
             }
         },
-        createCourse: async (_, { user_id, title, description }) =>  {
+        createCourse: async (_, { user_id, title, description }) => {
+
+            if (!user_id) {
+                throw new AuthenticationError('You must be signed in');
+            }
+
             try {
                 const query = `
                 INSERT INTO courses (user_id, title, description) 
@@ -211,8 +183,14 @@ const resolvers = {
     }
 }
 
-module.exports = {
-    resolvers,
-    typeDefs,
+const getUser = token => {
+    if (token) {
+        try {
+            return jwt.verify(token, process.env.JWT_SECRET);
+        } catch (err) {
+            throw new Error('Session invalid');
+        }
+    }
 };
 
+module.exports = {resolvers,getUser};

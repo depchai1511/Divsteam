@@ -1,15 +1,18 @@
 
 const express = require('express')
 const bodyParser = require('body-parser')
-const app = express()
-const port = process.env.PORT || 3000;
+
 const { ApolloServer } = require('apollo-server-express');
-const { typeDefs, resolvers } = require('./graphql.ts');
-const db = require('./database');
+const { resolvers, getUser } = require('./src/graphql/resolvers.ts');
+const { typeDefs } = require('./src/graphql/schemas.ts');
+const db = require('./src/modules/database');
+const port = Number(process.env.PORT ?? 3000);
+
 require('dotenv').config();
 
+db.createTables();
 
-app.use(bodyParser.json())
+const app = express()
 app.use(
   bodyParser.urlencoded({
     extended: true,
@@ -17,24 +20,33 @@ app.use(
 )
 
 
-app.listen(3000, () => {
-  console.log('Example app listening on port 3000!');
+app.listen(port, () => {
+  console.log(`🚀 Server ready at http://localhost:${port}${server.graphqlPath}`);
 });
 
-db.createTables();
+
+
 
 const server = new ApolloServer({
   typeDefs,
   resolvers,
+  /*
+  context: ({ req }) => {
+    const token = req.headers.authorization;
+    const user = getUser(token);
+    console.log(user);
+    return { user };
+  }
+  */
 });
-async function startServer() {
+
+const startServer = async () => {
   await server.start();
   console.log('Server started!')
-
-  server.applyMiddleware({ app });
+  server.applyMiddleware({ app,path : '/api/v1' });
 }
-startServer();
 
+startServer();
 
 app.get('/', (req, res) => {
   res.send("Hello");

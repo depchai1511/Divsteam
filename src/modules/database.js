@@ -143,7 +143,7 @@ const createTables = async () => {
                 REFERENCES Users(user_id)
         );
     `);
-        console.log('Done');
+        console.log('Created tables');
 
     }
     catch (error) {
@@ -236,5 +236,5 @@ module.exports = {
     createSuggestion,
     createTag,
     createCourse,
-    createTables
+    createTables,
 };
